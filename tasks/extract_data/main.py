@@ -50,17 +50,20 @@ class Extractor:
                 continue
         logger.info(f"数据提取完成, 共计 {len(self.char_count_map)} 个菜谱")
 
-    def view(self):
+    def view(self, inv_step:int = 100):
         """按每百字区间统计每篇字数分布"""
         counted_intervals = defaultdict(list)
         for dish_name, char_count in self.char_count_map.items():
-            interval = char_count // 100
+            interval = char_count // inv_step
             counted_intervals[interval].append(dish_name)
+
+        # 排序counted_intervals
+        counted_intervals = dict(sorted(counted_intervals.items()))
         for interval, dishes in counted_intervals.items():
             if len(dishes) <=5:
-                logger.info(f"{interval * 100}-{interval * 100 + 100}字: {len(dishes)}篇, {",".join(dishes)}")
+                logger.info(f"{interval * inv_step}-{inv_step * (interval+1)}字: {len(dishes)}篇, {",".join(dishes)}")
             else:
-                logger.info(f"{interval * 100}-{interval * 100 + 100}字: {len(dishes)}篇")
+                logger.info(f"{interval * inv_step}-{inv_step * (interval+1)}字: {len(dishes)}篇")
         
 
 def main():
