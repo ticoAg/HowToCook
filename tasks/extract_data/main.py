@@ -26,6 +26,7 @@ class Extractor:
         self.all_dishes_map = self.get_file_path()
         self.char_count_map = {}
         self.materials = defaultdict(list)
+        self.dishes_map = {}
 
     def get_file_path(self) -> dict:
         """从目录下定位所有.md文件的路径"""
@@ -36,6 +37,7 @@ class Extractor:
     def submit_data(self, name: str, content: str, recipe: Recipe):
         """提交数据"""
         # 统计每篇字数
+        self.dishes_map[name] = recipe
         self.char_count_map[name] = len(content)
         for material in recipe.materials:
             self.materials[material].append(name)
