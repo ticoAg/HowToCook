@@ -1,9 +1,10 @@
 import re
+from enum import StrEnum
 from typing import Dict, List, Optional
 
-from pydantic import BaseModel, Field
 from loguru import logger
-from enum import StrEnum
+from pydantic import BaseModel, Field
+
 
 class Recipe(BaseModel):
     """菜谱数据结构"""
@@ -11,32 +12,69 @@ class Recipe(BaseModel):
     title: str = Field(None, description="菜谱标题")
     difficulty: str = Field(None, description="烹饪难度")
     materials: List[str] = Field([], description="必备材料")
+    materials_darty: List[str] = Field([], description="必备材料(未处理)")
     estimation: str = Field("", description="份量计算")
     steps: List[Dict] = Field([], description="操作步骤")
     additional_info: List[str] = Field([], description="附加信息")
 
+
 class EnumHeadings(StrEnum):
     """菜谱标题"""
+
     MATERIALS = "## 必备原料和工具"
     ESTIMATION = "## 计算"
     STEPS = "## 操作"
     ADDITIONAL_INFO = "## 附加内容"
 
+
 def compare_diff(l1):
     """校验all_headings是否与EnumHeadings一致"""
     return set(l1).difference(set(EnumHeadings.__members__.values()))
 
+
+def is_all_chinese(text):
+    """判断字符串是否全是中文字符"""
+    return all(re.match(r"^[\u4e00-\u9fff]+$", item) for item in text)
+
+
+def clean_str(text: str) -> str:
+    """清理字符串"""
+
+    # 使用正则表达式过滤掉中英文括号内的内容
+    result = re.sub(r"[（\(][^）\)]*[）\)]", "", text)
+    return result.strip().strip(":").strip("：").strip("。").strip(".")
+
+
+def clean_material_str(text: str) -> list:
+    """处理材料字符串"""
+    materials_darty = []
+    for line in text.split("\n"):
+        if line.strip():
+            items = [
+                item.strip()
+                for item in re.split(r"[()（）,，。、”“:：+-/!！<>\[\]]+", line.replace("-", "").replace("*", "").replace(">", ""))
+                if item.strip()
+            ]
+            materials_darty.extend(items)
+
+    materials = [clean_str(i) for i in materials_darty]
+    # 判断rep 是否全是中文字符
+    if not is_all_chinese(materials):
+        logger.warning(materials)
+    return materials, materials_darty
+
+
 def parse_recipe(markdown_content):
     # 解析所有级别的markdown标题
     # all_headings = re.findall(r'^#{1,6} .+$', markdown_content, re.MULTILINE)
-    all_headings = re.findall(r'^#{1,2} .+$', markdown_content, re.MULTILINE)
+    all_headings = re.findall(r"^#{1,2} .+$", markdown_content, re.MULTILINE)
     logger.debug(f"markdown标题: {all_headings}")
     # 基于EnumHeadings校验all_headings
     for idx, heading in enumerate(all_headings):
         if idx == 0:
             continue
         if heading not in EnumHeadings.__members__.values():
-            diff_set = scompare_diff(all_headings)
+            diff_set = compare_diff(all_headings)
             raise ValueError(f"Diff heading: {diff_set}")
 
     item_collection = {}
@@ -52,11 +90,7 @@ def parse_recipe(markdown_content):
     # 解析必备原料和工具
     ingredients_section = re.search(r"## 必备原料和工具\n(.*?)\n##", markdown_content, re.DOTALL)
     if ingredients_section:
-        item_collection["materials"] = []
-        for line in ingredients_section.group(1).split("\n"):
-            if line.strip():
-                items = [item.strip() for item in line.strip("- ").split("、")]
-                item_collection["materials"].extend(items)
+        item_collection["materials"], item_collection["materials_darty"] = clean_material_str(ingredients_section.group(1))
 
     # 提取计算部分
     quantities_section = re.search(r"## 计算\n(.*?)\n##", markdown_content, re.DOTALL)
