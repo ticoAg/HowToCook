@@ -9,6 +9,7 @@
 import sys
 from collections import defaultdict
 from pathlib import Path
+from typing import Dict
 
 from loguru import logger
 
@@ -22,13 +23,13 @@ logger.add(sys.stderr, level="INFO")
 
 class Extractor:
     def __init__(self) -> None:
-        self.dishes_dir = dishes_dir
+        self.dishes_dir = Path(__file__).parents[2] / "dishes"
         self.all_dishes_map = self.get_file_path()
         self.char_count_map = {}
-        self.materials = defaultdict(list)
-        self.dishes_map = {}
+        self.materials: dict[str, list[str]] = defaultdict(list)
+        self.dishes_map: Dict[str, Recipe] = {}
 
-    def get_file_path(self) -> dict:
+    def get_file_path(self) -> dict[str, Path]:
         """从目录下定位所有.md文件的路径"""
         all_dishes = [md_file for md_file in self.dishes_dir.rglob("*.md")]
         name_dishes_map = {i.stem: i for i in all_dishes}
@@ -49,7 +50,7 @@ class Extractor:
                     markdown_content = f.read()
                     recipe = parse_recipe(markdown_content)
                     self.submit_data(dish_name, markdown_content, recipe)
-                    logger.info(f"{dish_name} 数据提取完成")
+                    logger.debug(f"{dish_name} 数据提取完成")
             except Exception as e:
                 logger.exception(f"{dish_path.as_posix()} 数据提取失败: {e}")
                 continue
@@ -81,5 +82,5 @@ def main():
 
 
 if __name__ == "__main__":
-    dishes_dir = Path(__file__).parents[2] / "dishes"
+
     main()

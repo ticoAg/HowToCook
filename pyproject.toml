@@ -5,6 +5,10 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "fastapi>=0.115.12",
+    "fuzzywuzzy>=0.18.0",
+    "jieba>=0.42.1",
     "loguru>=0.7.3",
     "pydantic>=2.11.3",
+    "uvicorn>=0.34.2",
 ]

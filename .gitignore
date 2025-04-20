@@ -9,3 +9,5 @@ site/
 mkdocs.yml
 
 __pycache__/
+.vscode
+.venv
