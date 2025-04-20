@@ -15,7 +15,7 @@ from fastapi.responses import JSONResponse, RedirectResponse
 
 sys.path.append(str(Path(__file__).parents[1].as_posix()))
 from extract_data.main import Extractor
-from extract_data.retrival import recall_recipes
+from extract_data.retrival import recall_by_whole_markdown, recall_recipes
 from extract_data.util import get_git_commit_hash, get_git_commit_time, timer_decorator
 
 
@@ -63,6 +63,13 @@ async def get_raw_recipe(recipe: str):
     return JSONResponse(content={"content": md_content})
 
 
+@app.get("/recipes/simple_query/", tags=["菜谱"], description="仅匹配输入的标签是否在原食谱markdown内")
+@timer_decorator
+async def match_recipes(query: str = Query(..., description="输入多个标签或者自然语言,用`,`或者`|`分隔", example="冬瓜,菠菜")):
+    sorted_recipes = recall_by_whole_markdown(query, RECIPES)
+    return JSONResponse(content={"matched_recipes": [{"recipe": k, "score": v} for k, v in sorted_recipes]})
+
+
 @app.get("/recipes/query/", tags=["菜谱"], description="匹配菜谱")
 @timer_decorator
 async def match_recipes(query: str = Query(..., description="输入多个标签或者自然语言,用`,`或者`|`分隔", example="冬瓜,菠菜")):
@@ -73,7 +80,6 @@ async def match_recipes(query: str = Query(..., description="输入多个标签�
     - 模糊匹配: 权重 + 0-1
     """
     sorted_recipes = recall_recipes(query, RECIPES)
-
     return JSONResponse(content={"matched_recipes": [{"recipe": k, "score": v} for k, v in sorted_recipes]})
 
 

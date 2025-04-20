@@ -60,3 +60,20 @@ def recall_recipes(query: str, recipes: Extractor) -> dict:
     # 按权重分数降序排序
     sorted_recipes = sorted(matched_recipes.items(), key=lambda x: (-x[1], x[0]))
     return sorted_recipes
+
+
+def recall_by_whole_markdown(query: str, recipes: Extractor):
+    """先分词, 如果分出的词出现在文章中就添加"""
+    matched_recipes = {}
+
+    tags = [tag.strip() for tag in query.replace("，", ",").replace("|", ",").split(",")]
+
+    for tag in tags:
+        words = jieba.lcut(tag)
+        for word in words:
+            for recipe_name, path in recipes.all_dishes_map.items():
+                markdown_content = open(path, "r", encoding="utf-8").read()
+                if word in markdown_content:
+                    matched_recipes[recipe_name] = matched_recipes.get(recipe_name, 0) + 1
+    sorted_recipes = sorted(matched_recipes.items(), key=lambda x: (-x[1], x[0]))
+    return sorted_recipes
