@@ -12,3 +12,7 @@ dependencies = [
     "pydantic>=2.11.3",
     "uvicorn>=0.34.2",
 ]
+
+[[tool.uv.index]]
+url = "https://mirrors.aliyun.com/pypi/simple"
+default = true

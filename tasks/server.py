@@ -11,11 +11,12 @@ import sys
 import time
 from functools import wraps
 from pathlib import Path
-from typing import Callable, Coroutine, Union
+from typing import Callable
 
 import jieba
 from fastapi import FastAPI, Query
 from fastapi.responses import JSONResponse, RedirectResponse
+from fuzzywuzzy import fuzz
 from loguru import logger
 
 sys.path.append(str(Path(__file__).parents[1].as_posix()))
@@ -44,7 +45,7 @@ def timer_decorator(func: Callable) -> Callable:
         result = func(*args, **kwargs)
         end_time = time.time()
         elapsed_time = end_time - start_time
-        print(f"Function {func.__name__} took {elapsed_time:.4f} seconds to execute.")
+        logger.info(f"Function {func.__name__} took {elapsed_time:.4f} seconds to execute.")
         return result
 
     @wraps(func)
@@ -53,7 +54,7 @@ def timer_decorator(func: Callable) -> Callable:
         result = await func(*args, **kwargs)
         end_time = time.time()
         elapsed_time = end_time - start_time
-        print(f"Function {func.__name__} took {elapsed_time:.4f} seconds to execute.")
+        logger.info(f"Function {func.__name__} took {elapsed_time:.4f} seconds to execute.")
         return result
 
     return async_wrapper if asyncio.iscoroutinefunction(func) else sync_wrapper
@@ -68,22 +69,18 @@ async def root():
     return RedirectResponse(url="/docs")
 
 
-@app.get("/recipes/list_all")
+@app.get("/recipes/list_all", tags=["菜谱"], description="列出所有菜谱")
 async def list_all_recipes():
-    """列出所有菜谱"""
     return JSONResponse(content={"recipes": list(recipes.dishes_map.keys())})
 
 
-@app.get("/recipes/{recipe}")
+@app.get("/recipes/{recipe}", tags=["菜谱"], description="获取解析后的菜谱")
 async def get_recipe(recipe: str):
-    """获取解析后的菜谱"""
     return JSONResponse(content=recipes.dishes_map.get(recipe).model_dump())
 
 
-# 获取原始菜谱markdown
-@app.get("/recipes/raw/{recipe}")
+@app.get("/recipes/raw/{recipe}", tags=["菜谱"], description="获取原始菜谱markdown")
 async def get_raw_recipe(recipe: str):
-    """获取原始菜谱markdown"""
     _path = recipes.all_dishes_map.get(recipe)
     if not _path:
         return JSONResponse(content={"error": "菜谱不存在"})
@@ -92,12 +89,9 @@ async def get_raw_recipe(recipe: str):
     return JSONResponse(content={"content": md_content})
 
 
-from fuzzywuzzy import fuzz  # 需要安装 fuzzywuzzy 库
-
-
-@app.get("/recipes/query/")
+@app.get("/recipes/query/", tags=["菜谱"], description="匹配菜谱")
 @timer_decorator
-async def match_recipes(query: str = Query(..., description="输入多个标签，用逗号分隔", example="螃蟹,西瓜")):
+async def match_recipes(query: str = Query(..., description="输入多个标签或者自然语言,用`,`或者`|`分隔", example="冬瓜,菠菜")):
     """
     根据输入的多个标签匹配菜谱
     - 完全匹配: 权重 + 5
@@ -152,6 +146,16 @@ async def match_recipes(query: str = Query(..., description="输入多个标签�
     # 按权重分数降序排序
     sorted_recipes = sorted(matched_recipes.items(), key=lambda x: (-x[1], x[0]))
     return JSONResponse(content={"matched_recipes": [{"recipe": k, "score": v} for k, v in sorted_recipes]})
+
+
+@app.get("/materials/list_all", tags=["材料"], description="列出所有材料,注:此处处理出的材料是很`脏`的,仅用于召回菜谱")
+async def list_all_materials():
+    return JSONResponse(content={"materials": list(recipes.materials.keys())})
+
+
+@app.get("/materials/query/", tags=["材料"], description="查询材料相关的菜谱")
+async def query_materials(query: str = Query(..., description="仅接受单一材料", example="冬瓜")):
+    return JSONResponse(content={"recipes": recipes.materials.get(query, [])})
 
 
 if __name__ == "__main__":

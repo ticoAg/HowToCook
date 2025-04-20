@@ -52,7 +52,7 @@ def clean_material_str(text: str) -> list:
         if line.strip():
             items = [
                 item.strip()
-                for item in re.split(r"[()（）,，。、”“:：+-/!！<>\[\]]+", line.replace("-", "").replace("*", "").replace(">", ""))
+                for item in re.split(r"[()（）,，。、”“:：+-/!！<>\[\]\s]+", line.replace("-", "").replace("*", "").replace(">", ""))
                 if item.strip()
             ]
             materials_darty.extend(items)
